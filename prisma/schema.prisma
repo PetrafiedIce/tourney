@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Tournament {
+  id          String   @id @default(cuid())
+  name        String
+  ladder      String
+  status      String
+  createdAt   DateTime @default(now())
+  startedAt   DateTime?
+  adminToken  String   @unique
+  players     Player[]
+  matches     Match[]
+}
+
+model Player {
+  id           String      @id @default(cuid())
+  tournamentId String
+  tournament   Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  username     String
+  uuid         String
+  seed         Int?
+  eliminated   Boolean     @default(false)
+  matchesAsP1  Match[]     @relation("P1")
+  matchesAsP2  Match[]     @relation("P2")
+  matchesWon   Match[]     @relation("Winner")
+
+  @@unique([tournamentId, uuid])
+  @@unique([tournamentId, username])
+}
+
+model Match {
+  id             String      @id @default(cuid())
+  tournamentId   String
+  tournament     Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  round          Int
+  slot           Int
+  player1Id      String?
+  player1        Player?     @relation("P1", fields: [player1Id], references: [id])
+  player2Id      String?
+  player2        Player?     @relation("P2", fields: [player2Id], references: [id])
+  winnerId       String?
+  winner         Player?     @relation("Winner", fields: [winnerId], references: [id])
+  flowpvpMatchId String?     @unique
+  startedAt      DateTime?
+  resolvedAt     DateTime?
+  lastCheckedAt  DateTime?
+  notes          String?
+
+  @@unique([tournamentId, round, slot])
+  @@index([tournamentId, round, slot])
+}
