@@ -69,6 +69,78 @@ function findRecentMatchesPayload(value: unknown): FlowPvPProfile | null {
   return null;
 }
 
+function extractBalancedJsonObject(input: string, startIndex: number) {
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let index = startIndex; index < input.length; index += 1) {
+    const char = input[index];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = false;
+      }
+
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return input.slice(startIndex, index + 1);
+      }
+    }
+  }
+
+  return null;
+}
+
+function extractRecentMatchesFromRawHtml(html: string) {
+  const recentMatchesIndex = html.indexOf('\\"recentMatches\\"');
+  if (recentMatchesIndex === -1) {
+    return null;
+  }
+
+  const objectStart = html.lastIndexOf('{\\"player\\":', recentMatchesIndex);
+  if (objectStart === -1) {
+    return null;
+  }
+
+  const rawObject = extractBalancedJsonObject(html, objectStart);
+  if (!rawObject) {
+    return null;
+  }
+
+  try {
+    const decoded = JSON.parse(`"${rawObject}"`) as string;
+    const payload = JSON.parse(decoded) as unknown;
+    return findRecentMatchesPayload(payload);
+  } catch {
+    return null;
+  }
+}
+
 export function extractRecentMatches(html: string) {
   const re = /self\.__next_f\.push\(\[1,\s*"([\s\S]+?)"\]\)/g;
 
@@ -88,6 +160,11 @@ export function extractRecentMatches(html: string) {
     } catch {
       continue;
     }
+  }
+
+  const fallbackPayload = extractRecentMatchesFromRawHtml(html);
+  if (fallbackPayload) {
+    return fallbackPayload;
   }
 
   throw new AppError(
@@ -182,7 +259,22 @@ export async function getRecentMatches(username: string) {
 }
 
 export async function resolveFlowPvPIdentity(username: string) {
-  const profile = await getRecentMatches(username);
+  let profile: FlowPvPProfile;
+
+  try {
+    profile = await getRecentMatches(username);
+  } catch (error) {
+    if (error instanceof AppError && error.code === API_ERROR_CODES.PARSER_FAILED) {
+      throw new AppError(
+        error.code,
+        `FlowPvP parsing failed for username ${username}.`,
+        error.status,
+        { username },
+      );
+    }
+
+    throw error;
+  }
 
   if (!profile.player.uniqueId) {
     throw new AppError(API_ERROR_CODES.NOT_FOUND, `Could not resolve UUID for ${username}.`, 404);
