@@ -20,11 +20,12 @@ export function TournamentForm() {
   async function handleSubmit(formData: FormData) {
     setLoading(true);
     try {
+      const adminTokenValue = String(formData.get("adminToken") ?? "").trim();
       const payload = {
         name: String(formData.get("name") ?? ""),
         ladder: String(formData.get("ladder") ?? ""),
         usernames: String(formData.get("usernames") ?? ""),
-        adminToken: String(formData.get("adminToken") ?? ""),
+        ...(adminTokenValue ? { adminToken: adminTokenValue } : {}),
       };
 
       const response = await fetch("/api/tournaments", {

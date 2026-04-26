@@ -1,23 +1,23 @@
 import { NextResponse } from "next/server";
 
-import { AppError } from "@/lib/errors";
+import { jsonError } from "@/lib/api";
 import { resolveFlowPvPIdentity } from "@/lib/flowpvp";
 import { prisma } from "@/lib/prisma";
 import { createAdminToken } from "@/lib/tournaments";
 import { createTournamentSchema, normalizeUsernames } from "@/lib/validators";
 
-function jsonError(error: unknown) {
-  if (error instanceof AppError) {
-    return NextResponse.json({ code: error.code, message: error.message, details: error.details }, { status: error.status });
-  }
-
-  console.error(error);
-  return NextResponse.json({ code: "internal_error", message: "Unexpected server error." }, { status: 500 });
-}
-
 export async function POST(request: Request) {
   try {
-    const payload = createTournamentSchema.parse(await request.json());
+    const rawPayload = (await request.json()) as {
+      name?: string;
+      ladder?: string;
+      usernames?: string;
+      adminToken?: string;
+    };
+    const payload = createTournamentSchema.parse({
+      ...rawPayload,
+      adminToken: rawPayload.adminToken?.trim() ? rawPayload.adminToken : undefined,
+    });
     const usernames = normalizeUsernames(payload.usernames ?? "");
     const adminToken = payload.adminToken?.trim() || createAdminToken();
 

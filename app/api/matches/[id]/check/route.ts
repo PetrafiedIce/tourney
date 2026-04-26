@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { jsonError } from "@/lib/api";
 import { AppError } from "@/lib/errors";
 import { getRecentMatches } from "@/lib/flowpvp";
 import { prisma } from "@/lib/prisma";
@@ -10,15 +11,6 @@ import {
   latestDisplayName,
   selectFirstQualifyingResult,
 } from "@/lib/tournaments";
-
-function jsonError(error: unknown) {
-  if (error instanceof AppError) {
-    return NextResponse.json({ code: error.code, message: error.message, details: error.details }, { status: error.status });
-  }
-
-  console.error(error);
-  return NextResponse.json({ code: "internal_error", message: "Unexpected server error." }, { status: 500 });
-}
 
 export async function POST(_request: Request, ctx: RouteContext<"/api/matches/[id]/check">) {
   try {

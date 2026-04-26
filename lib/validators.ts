@@ -12,7 +12,11 @@ export const createTournamentSchema = z.object({
     .transform((value) => value.toLowerCase())
     .refine((value) => LADDER_IDS.has(value), "Unsupported ladder"),
   usernames: z.string().optional(),
-  adminToken: z.string().trim().min(8).max(128).optional(),
+  adminToken: z
+    .string()
+    .trim()
+    .transform((value) => value || undefined)
+    .pipe(z.string().min(8).max(128).optional()),
 });
 
 export const registerPlayersSchema = z.object({

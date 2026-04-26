@@ -1,18 +1,10 @@
 import { NextResponse } from "next/server";
 
+import { jsonError } from "@/lib/api";
 import { AppError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { generateInitialBracket } from "@/lib/tournaments";
 import { adminTournamentActionSchema } from "@/lib/validators";
-
-function jsonError(error: unknown) {
-  if (error instanceof AppError) {
-    return NextResponse.json({ code: error.code, message: error.message }, { status: error.status });
-  }
-
-  console.error(error);
-  return NextResponse.json({ code: "internal_error", message: "Unexpected server error." }, { status: 500 });
-}
 
 export async function POST(request: Request, ctx: RouteContext<"/api/admin/tournaments/[id]/actions">) {
   try {
